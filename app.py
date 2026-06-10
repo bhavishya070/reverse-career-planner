@@ -2,10 +2,12 @@ import streamlit as st
 from google import genai
 from dotenv import load_dotenv
 import os
+import time
 
 # Load environment variables
 load_dotenv()
 
+# Get API key
 api_key = os.getenv("GEMINI_API_KEY")
 
 st.set_page_config(
@@ -13,9 +15,6 @@ st.set_page_config(
     page_icon="🚀",
     layout="wide"
 )
-
-# DEBUG - REMOVE LATER
-st.write("API Key loaded:", api_key[:10] if api_key else "NOT FOUND")
 
 st.title("🚀 Reverse Career Planner")
 
@@ -43,7 +42,7 @@ skills = st.text_area(
 if st.button("Generate Roadmap"):
 
     if not api_key:
-        st.error("Please add your GEMINI_API_KEY in the .env file")
+        st.error("API key not found. Please configure GEMINI_API_KEY.")
 
     else:
         try:
@@ -86,14 +85,78 @@ if st.button("Generate Roadmap"):
 
             with st.spinner("Creating your roadmap..."):
 
-                response = client.models.generate_content(
-                    model="gemini-2.5-flash",
-                    contents=prompt,
-                )
+                success = False
 
-                st.success("Roadmap Generated!")
+                for _ in range(3):
+                    try:
+                        response = client.models.generate_content(
+                            model="gemini-2.5-flash",
+                            contents=prompt,
+                        )
 
-                st.markdown(response.text)
+                        st.success("Roadmap Generated!")
+                        st.markdown(response.text)
 
-        except Exception as e:
-            st.error(f"Error: {e}")
+                        success = True
+                        break
+
+                    except Exception:
+                        time.sleep(5)
+
+                if not success:
+                    st.warning(
+                        "The AI service is currently busy. Showing a sample roadmap."
+                    )
+
+                    st.markdown(f"""
+# {career} Career Roadmap
+
+## Required Skills
+- Python
+- Data Structures & Algorithms
+- Object-Oriented Programming
+- Database Management Systems
+- Git & GitHub
+
+## Skill Gap Analysis
+Focus on strengthening technical fundamentals and building practical projects.
+
+## Year 1
+- Learn core programming concepts
+- Build beginner projects
+- Improve problem-solving skills
+
+## Year 2
+- Work on advanced projects
+- Earn relevant certifications
+- Participate in internships
+
+## Year 3
+- Prepare for interviews
+- Build a strong resume
+- Apply for jobs and internships
+
+## Recommended Projects
+- Portfolio Website
+- Task Management App
+- AI Career Assistant
+- Data Analysis Dashboard
+
+## Certifications
+- Python Programming
+- Data Structures & Algorithms
+- Cloud Fundamentals
+
+## Interview Preparation
+- Practice coding questions
+- Mock interviews
+- Resume optimization
+
+## Final Tips
+Stay consistent, build projects regularly, and keep learning new technologies.
+""")
+
+        except Exception:
+            st.error(
+                "The AI service is temporarily unavailable. Please try again later."
+            )

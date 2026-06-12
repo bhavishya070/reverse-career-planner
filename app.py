@@ -3,12 +3,9 @@ from google import genai
 from dotenv import load_dotenv
 import os
 import time
+import requests
 
-# Load environment variables
 load_dotenv()
-
-# Get API key
-api_key = os.getenv("GEMINI_API_KEY")
 
 st.set_page_config(
     page_title="Reverse Career Planner",
@@ -19,8 +16,28 @@ st.set_page_config(
 st.title("🚀 Reverse Career Planner")
 
 st.write(
-    "Tell us your dream career and we'll generate a roadmap to achieve it."
+    "Plan your dream career with AI-generated personalized roadmaps."
 )
+
+# Language Selection
+language = st.selectbox(
+    "🌐 Select Language",
+    ["English", "Hindi", "Telugu"]
+)
+
+# AI Provider Selection
+provider = st.radio(
+    "🤖 Choose AI Provider",
+    ["Gemini API", "Ollama (Local AI)"]
+)
+
+# BYOK
+user_api_key = st.text_input(
+    "🔑 Gemini API Key (Optional - BYOK)",
+    type="password"
+)
+
+api_key = user_api_key if user_api_key else os.getenv("GEMINI_API_KEY")
 
 career = st.text_input(
     "Desired Career",
@@ -41,122 +58,140 @@ skills = st.text_area(
 
 if st.button("Generate Roadmap"):
 
-    if not api_key:
-        st.error("API key not found. Please configure GEMINI_API_KEY.")
+    if not career:
+        st.warning("Please enter a desired career.")
+        st.stop()
 
-    else:
-        try:
-            client = genai.Client(api_key=api_key)
+    prompt = f"""
+You are an expert career mentor.
 
-            prompt = f"""
-            Act as an expert career mentor.
+IMPORTANT:
+Generate the COMPLETE response in {language} language only.
 
-            Desired Career:
-            {career}
+Do NOT use English unless English is selected.
 
-            Time Available:
-            {years} years
+All headings, explanations, roadmap steps, certifications,
+projects, salary expectations and tips must be in {language}.
 
-            Current Skills:
-            {skills}
+Desired Career:
+{career}
 
-            Generate:
+Time Available:
+{years} years
 
-            1. Career Overview
+Current Skills:
+{skills}
 
-            2. Required Skills
+Generate:
 
-            3. Skill Gap Analysis
+1. Career Overview
 
-            4. Year-wise Roadmap
+2. Required Skills
 
-            5. Projects to Build
+3. Skill Gap Analysis
 
-            6. Certifications
+4. Year-wise Roadmap
 
-            7. Interview Preparation Strategy
+5. Projects to Build
 
-            8. Salary Expectations
+6. Certifications
 
-            9. Final Tips
+7. Interview Preparation Strategy
 
-            Make it detailed and beginner friendly.
-            """
+8. Salary Expectations
 
-            with st.spinner("Creating your roadmap..."):
+9. Final Tips
 
-                success = False
+Make it detailed and beginner friendly.
+"""
+
+    try:
+
+        with st.spinner("Generating your roadmap..."):
+
+            answer = None
+
+            # GEMINI
+            if provider == "Gemini API":
+
+                if not api_key:
+                    st.error(
+                        "Please provide a Gemini API key or configure GEMINI_API_KEY."
+                    )
+                    st.stop()
+
+                client = genai.Client(api_key=api_key)
 
                 for _ in range(3):
+
                     try:
+
                         response = client.models.generate_content(
                             model="gemini-2.5-flash",
                             contents=prompt,
                         )
 
-                        st.success("Roadmap Generated!")
-                        st.markdown(response.text)
-
-                        success = True
+                        answer = response.text
                         break
 
                     except Exception:
                         time.sleep(5)
 
-                if not success:
-                    st.warning(
-                        "The AI service is currently busy. Showing a sample roadmap."
-                    )
+            # OLLAMA
+            else:
 
-                    st.markdown(f"""
-# {career} Career Roadmap
+                response = requests.post(
+                    "http://localhost:11434/api/generate",
+                    json={
+                        "model": "llama3",
+                        "prompt": prompt,
+                        "stream": False
+                    }
+                )
+
+                answer = response.json()["response"]
+
+            if answer:
+
+                st.success("Roadmap Generated Successfully!")
+
+                st.write(f"🌐 Language: {language}")
+                st.write(f"🤖 AI Provider: {provider}")
+
+                st.markdown(answer)
+
+            else:
+
+                st.warning(
+                    "AI service is busy. Showing sample roadmap."
+                )
+
+                st.markdown(f"""
+# {career}
+
+## Career Overview
+A promising career path with strong growth opportunities.
 
 ## Required Skills
 - Python
-- Data Structures & Algorithms
-- Object-Oriented Programming
-- Database Management Systems
+- DSA
+- DBMS
+- OOP
 - Git & GitHub
 
-## Skill Gap Analysis
-Focus on strengthening technical fundamentals and building practical projects.
-
 ## Year 1
-- Learn core programming concepts
-- Build beginner projects
-- Improve problem-solving skills
+Learn fundamentals and build beginner projects.
 
 ## Year 2
-- Work on advanced projects
-- Earn relevant certifications
-- Participate in internships
+Advanced projects, certifications and internships.
 
 ## Year 3
-- Prepare for interviews
-- Build a strong resume
-- Apply for jobs and internships
-
-## Recommended Projects
-- Portfolio Website
-- Task Management App
-- AI Career Assistant
-- Data Analysis Dashboard
-
-## Certifications
-- Python Programming
-- Data Structures & Algorithms
-- Cloud Fundamentals
-
-## Interview Preparation
-- Practice coding questions
-- Mock interviews
-- Resume optimization
+Interview preparation and job applications.
 
 ## Final Tips
-Stay consistent, build projects regularly, and keep learning new technologies.
+Stay consistent and keep building real-world projects.
 """)
 
-        except Exception:
-            st.error(
-                "The AI service is temporarily unavailable. Please try again later."
-            )
+    except Exception as e:
+
+        st.error(f"Error: {e}")

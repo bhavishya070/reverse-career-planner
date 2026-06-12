@@ -13,65 +13,102 @@ st.set_page_config(
     layout="wide"
 )
 
-st.title("🚀 Reverse Career Planner")
-
-st.write(
-    "Plan your dream career with AI-generated personalized roadmaps."
-)
-
 # Language Selection
 language = st.selectbox(
     "🌐 Select Language",
     ["English", "Hindi", "Telugu"]
 )
 
-# AI Provider Selection
+translations = {
+    "English": {
+        "title": "🚀 Reverse Career Planner",
+        "subtitle": "Plan your dream career with AI-generated personalized roadmaps.",
+        "career": "Desired Career",
+        "skills": "Current Skills",
+        "years": "Time to Achieve Goal (Years)",
+        "button": "Generate Roadmap",
+        "provider": "🤖 Choose AI Provider",
+        "apikey": "🔑 Gemini API Key (Optional - BYOK)",
+        "success": "Roadmap Generated Successfully!",
+        "warning": "Please enter a desired career."
+    },
+
+    "Hindi": {
+        "title": "🚀 रिवर्स करियर प्लानर",
+        "subtitle": "एआई द्वारा तैयार व्यक्तिगत करियर रोडमैप प्राप्त करें।",
+        "career": "वांछित करियर",
+        "skills": "वर्तमान कौशल",
+        "years": "लक्ष्य प्राप्त करने का समय (वर्ष)",
+        "button": "रोडमैप बनाएं",
+        "provider": "🤖 एआई प्रदाता चुनें",
+        "apikey": "🔑 Gemini API कुंजी (वैकल्पिक - BYOK)",
+        "success": "रोडमैप सफलतापूर्वक तैयार किया गया!",
+        "warning": "कृपया वांछित करियर दर्ज करें।"
+    },
+
+    "Telugu": {
+        "title": "🚀 రివర్స్ కెరీర్ ప్లానర్",
+        "subtitle": "AI ఆధారిత వ్యక్తిగత కెరీర్ రోడ్‌మ్యాప్‌ను పొందండి.",
+        "career": "కావలసిన కెరీర్",
+        "skills": "ప్రస్తుత నైపుణ్యాలు",
+        "years": "లక్ష్యాన్ని చేరుకునే సమయం (సంవత్సరాలు)",
+        "button": "రోడ్‌మ్యాప్ రూపొందించు",
+        "provider": "🤖 AI ప్రొవైడర్‌ను ఎంచుకోండి",
+        "apikey": "🔑 Gemini API కీ (ఐచ్ఛికం - BYOK)",
+        "success": "రోడ్‌మ్యాప్ విజయవంతంగా రూపొందించబడింది!",
+        "warning": "దయచేసి మీ కెరీర్ లక్ష్యాన్ని నమోదు చేయండి."
+    }
+}
+
+t = translations[language]
+
+st.title(t["title"])
+st.write(t["subtitle"])
+
 provider = st.radio(
-    "🤖 Choose AI Provider",
+    t["provider"],
     ["Gemini API", "Ollama (Local AI)"]
 )
 
-# BYOK
 user_api_key = st.text_input(
-    "🔑 Gemini API Key (Optional - BYOK)",
+    t["apikey"],
     type="password"
 )
 
 api_key = user_api_key if user_api_key else os.getenv("GEMINI_API_KEY")
 
 career = st.text_input(
-    "Desired Career",
+    t["career"],
     placeholder="Data Scientist"
 )
 
 years = st.slider(
-    "Time to Achieve Goal (Years)",
+    t["years"],
     1,
     10,
     3
 )
 
 skills = st.text_area(
-    "Current Skills",
+    t["skills"],
     placeholder="Python, HTML, Communication"
 )
 
-if st.button("Generate Roadmap"):
+if st.button(t["button"]):
 
     if not career:
-        st.warning("Please enter a desired career.")
+        st.warning(t["warning"])
         st.stop()
 
     prompt = f"""
 You are an expert career mentor.
 
 IMPORTANT:
-Generate the COMPLETE response in {language} language only.
+Generate the COMPLETE roadmap in {language}.
 
-Do NOT use English unless English is selected.
+Use ONLY {language} language.
 
-All headings, explanations, roadmap steps, certifications,
-projects, salary expectations and tips must be in {language}.
+Do not switch to English unless English is selected.
 
 Desired Career:
 {career}
@@ -85,24 +122,16 @@ Current Skills:
 Generate:
 
 1. Career Overview
-
 2. Required Skills
-
 3. Skill Gap Analysis
-
 4. Year-wise Roadmap
-
 5. Projects to Build
-
 6. Certifications
-
 7. Interview Preparation Strategy
-
 8. Salary Expectations
-
 9. Final Tips
 
-Make it detailed and beginner friendly.
+Make the roadmap detailed and beginner friendly.
 """
 
     try:
@@ -111,13 +140,10 @@ Make it detailed and beginner friendly.
 
             answer = None
 
-            # GEMINI
             if provider == "Gemini API":
 
                 if not api_key:
-                    st.error(
-                        "Please provide a Gemini API key or configure GEMINI_API_KEY."
-                    )
+                    st.error("Please provide a Gemini API key.")
                     st.stop()
 
                 client = genai.Client(api_key=api_key)
@@ -137,7 +163,6 @@ Make it detailed and beginner friendly.
                     except Exception:
                         time.sleep(5)
 
-            # OLLAMA
             else:
 
                 response = requests.post(
@@ -146,14 +171,15 @@ Make it detailed and beginner friendly.
                         "model": "llama3",
                         "prompt": prompt,
                         "stream": False
-                    }
+                    },
+                    timeout=300
                 )
 
                 answer = response.json()["response"]
 
             if answer:
 
-                st.success("Roadmap Generated Successfully!")
+                st.success(t["success"])
 
                 st.write(f"🌐 Language: {language}")
                 st.write(f"🤖 AI Provider: {provider}")
@@ -162,35 +188,7 @@ Make it detailed and beginner friendly.
 
             else:
 
-                st.warning(
-                    "AI service is busy. Showing sample roadmap."
-                )
-
-                st.markdown(f"""
-# {career}
-
-## Career Overview
-A promising career path with strong growth opportunities.
-
-## Required Skills
-- Python
-- DSA
-- DBMS
-- OOP
-- Git & GitHub
-
-## Year 1
-Learn fundamentals and build beginner projects.
-
-## Year 2
-Advanced projects, certifications and internships.
-
-## Year 3
-Interview preparation and job applications.
-
-## Final Tips
-Stay consistent and keep building real-world projects.
-""")
+                st.warning("AI service is currently busy.")
 
     except Exception as e:
 
